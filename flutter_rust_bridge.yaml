@@ -1,0 +1,11 @@
+rust_root: rust/
+rust_input: crate::api
+dart_output: lib/src/rust/
+c_output: rust/bridge_generated.h
+dart_format_line_length: 100
+
+# It should be true for properly bridge_generated.h generate
+full_dep: true
+
+# This prevents frb_generated.web.dart from being generated
+web: false
