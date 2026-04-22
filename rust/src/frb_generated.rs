@@ -33,9 +33,9 @@ use flutter_rust_bridge::{Handler, IntoIntoDart};
 // Section: boilerplate
 
 flutter_rust_bridge::frb_generated_boilerplate!(
-    default_stream_sink_codec = SseCodec,
-    default_rust_opaque = RustOpaqueMoi,
-    default_rust_auto_opaque = RustAutoOpaqueMoi,
+    default_stream_sink_codec = DcoCodec,
+    default_rust_opaque = RustOpaqueNom,
+    default_rust_auto_opaque = RustAutoOpaqueNom,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.12.0";
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 393267451;
@@ -48,31 +48,18 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 fn wire__crate__api__pdf_api__create_simple_pdf_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
+    request: impl CstDecode<crate::domain::models::CreatePdfRequest>,
 ) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::DcoCodec, _, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
             debug_name: "create_simple_pdf",
             port: Some(port_),
             mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
         },
         move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_request =
-                <crate::domain::models::CreatePdfRequest>::sse_decode(&mut deserializer);
-            deserializer.end();
+            let api_request = request.cst_decode();
             move |context| async move {
-                transform_result_sse::<_, String>(
+                transform_result_dco::<_, _, String>(
                     (move || async move {
                         let output_ok = crate::api::pdf_api::create_simple_pdf(api_request).await?;
                         Ok(output_ok)
@@ -86,6 +73,24 @@ fn wire__crate__api__pdf_api__create_simple_pdf_impl(
 
 // Section: dart2rust
 
+impl CstDecode<u32> for u32 {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    fn cst_decode(self) -> u32 {
+        self
+    }
+}
+impl CstDecode<u64> for u64 {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    fn cst_decode(self) -> u64 {
+        self
+    }
+}
+impl CstDecode<u8> for u8 {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    fn cst_decode(self) -> u8 {
+        self
+    }
+}
 impl SseDecode for String {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -193,7 +198,6 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__pdf_api__create_simple_pdf_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -358,30 +362,134 @@ mod io {
     // Section: boilerplate
 
     flutter_rust_bridge::frb_generated_boilerplate_io!();
+
+    // Section: dart2rust
+
+    impl CstDecode<String> for *mut wire_cst_list_prim_u_8_strict {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> String {
+            let vec: Vec<u8> = self.cst_decode();
+            String::from_utf8(vec).unwrap()
+        }
+    }
+    impl CstDecode<crate::domain::models::CreatePdfRequest> for *mut wire_cst_create_pdf_request {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> crate::domain::models::CreatePdfRequest {
+            let wrap = unsafe { flutter_rust_bridge::for_generated::box_from_leak_ptr(self) };
+            CstDecode::<crate::domain::models::CreatePdfRequest>::cst_decode(*wrap).into()
+        }
+    }
+    impl CstDecode<crate::domain::models::CreatePdfRequest> for wire_cst_create_pdf_request {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> crate::domain::models::CreatePdfRequest {
+            crate::domain::models::CreatePdfRequest {
+                output_path: self.output_path.cst_decode(),
+                title: self.title.cst_decode(),
+                body: self.body.cst_decode(),
+                author: self.author.cst_decode(),
+            }
+        }
+    }
+    impl CstDecode<crate::domain::models::CreatePdfResponse> for wire_cst_create_pdf_response {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> crate::domain::models::CreatePdfResponse {
+            crate::domain::models::CreatePdfResponse {
+                file_path: self.file_path.cst_decode(),
+                file_name: self.file_name.cst_decode(),
+                file_size_bytes: self.file_size_bytes.cst_decode(),
+                page_count: self.page_count.cst_decode(),
+            }
+        }
+    }
+    impl CstDecode<Vec<u8>> for *mut wire_cst_list_prim_u_8_strict {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> Vec<u8> {
+            unsafe {
+                let wrap = flutter_rust_bridge::for_generated::box_from_leak_ptr(self);
+                flutter_rust_bridge::for_generated::vec_from_leak_ptr(wrap.ptr, wrap.len)
+            }
+        }
+    }
+    impl NewWithNullPtr for wire_cst_create_pdf_request {
+        fn new_with_null_ptr() -> Self {
+            Self {
+                output_path: core::ptr::null_mut(),
+                title: core::ptr::null_mut(),
+                body: core::ptr::null_mut(),
+                author: core::ptr::null_mut(),
+            }
+        }
+    }
+    impl Default for wire_cst_create_pdf_request {
+        fn default() -> Self {
+            Self::new_with_null_ptr()
+        }
+    }
+    impl NewWithNullPtr for wire_cst_create_pdf_response {
+        fn new_with_null_ptr() -> Self {
+            Self {
+                file_path: core::ptr::null_mut(),
+                file_name: core::ptr::null_mut(),
+                file_size_bytes: Default::default(),
+                page_count: Default::default(),
+            }
+        }
+    }
+    impl Default for wire_cst_create_pdf_response {
+        fn default() -> Self {
+            Self::new_with_null_ptr()
+        }
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_pdf_bridge_app_wire__crate__api__pdf_api__create_simple_pdf(
+        port_: i64,
+        request: *mut wire_cst_create_pdf_request,
+    ) {
+        wire__crate__api__pdf_api__create_simple_pdf_impl(port_, request)
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_pdf_bridge_app_cst_new_box_autoadd_create_pdf_request(
+    ) -> *mut wire_cst_create_pdf_request {
+        flutter_rust_bridge::for_generated::new_leak_box_ptr(
+            wire_cst_create_pdf_request::new_with_null_ptr(),
+        )
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_pdf_bridge_app_cst_new_list_prim_u_8_strict(
+        len: i32,
+    ) -> *mut wire_cst_list_prim_u_8_strict {
+        let ans = wire_cst_list_prim_u_8_strict {
+            ptr: flutter_rust_bridge::for_generated::new_leak_vec_ptr(Default::default(), len),
+            len,
+        };
+        flutter_rust_bridge::for_generated::new_leak_box_ptr(ans)
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct wire_cst_create_pdf_request {
+        output_path: *mut wire_cst_list_prim_u_8_strict,
+        title: *mut wire_cst_list_prim_u_8_strict,
+        body: *mut wire_cst_list_prim_u_8_strict,
+        author: *mut wire_cst_list_prim_u_8_strict,
+    }
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct wire_cst_create_pdf_response {
+        file_path: *mut wire_cst_list_prim_u_8_strict,
+        file_name: *mut wire_cst_list_prim_u_8_strict,
+        file_size_bytes: u64,
+        page_count: u32,
+    }
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct wire_cst_list_prim_u_8_strict {
+        ptr: *mut u8,
+        len: i32,
+    }
 }
 #[cfg(not(target_family = "wasm"))]
 pub use io::*;
-
-/// cbindgen:ignore
-#[cfg(target_family = "wasm")]
-mod web {
-    // This file is automatically generated, so please do not edit it.
-    // @generated by `flutter_rust_bridge`@ 2.12.0.
-
-    // Section: imports
-
-    use super::*;
-    use flutter_rust_bridge::for_generated::byteorder::{
-        NativeEndian, ReadBytesExt, WriteBytesExt,
-    };
-    use flutter_rust_bridge::for_generated::wasm_bindgen;
-    use flutter_rust_bridge::for_generated::wasm_bindgen::prelude::*;
-    use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
-    use flutter_rust_bridge::{Handler, IntoIntoDart};
-
-    // Section: boilerplate
-
-    flutter_rust_bridge::frb_generated_boilerplate_web!();
-}
-#[cfg(target_family = "wasm")]
-pub use web::*;

@@ -89,13 +89,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_box_autoadd_create_pdf_request(request, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1, port: port_);
+          var arg0 = cst_encode_box_autoadd_create_pdf_request(request);
+          return wire.wire__crate__api__pdf_api__create_simple_pdf(port_, arg0);
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_create_pdf_response,
-          decodeErrorData: sse_decode_String,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_create_pdf_response,
+          decodeErrorData: dco_decode_String,
         ),
         constMeta: kCrateApiPdfApiCreateSimplePdfConstMeta,
         argValues: [request],
@@ -264,6 +263,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   bool sse_decode_bool(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint8() != 0;
+  }
+
+  @protected
+  int cst_encode_u_32(int raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw;
+  }
+
+  @protected
+  int cst_encode_u_8(int raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw;
   }
 
   @protected

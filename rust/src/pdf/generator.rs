@@ -1,114 +1,114 @@
 use std::path::Path;
 
-use printpdf::{
-    BuiltinFont,
-    Mm,
-    Op,
-    PdfDocument,
-    PdfFontHandle,
-    PdfPage,
-    PdfSaveOptions,
-    Point,
-    Pt,
-    TextItem,
-};
+use lopdf::content::{ Content, Operation };
+use lopdf::{ dictionary, Document, Object, Stream };
 
 use crate::domain::models::{ CreatePdfRequest, CreatePdfResponse };
 use crate::error::PdfForgeError;
 use crate::pdf::layout::{
+    AUTHOR_Y_PT,
     BODY_FONT_SIZE,
-    BODY_START_Y_MM,
-    LINE_HEIGHT_MM,
-    MARGIN_LEFT_MM,
-    MARGIN_TOP_MM,
-    PAGE_HEIGHT_MM,
-    PAGE_WIDTH_MM,
+    BODY_START_Y_PT,
+    BOTTOM_MARGIN_PT,
+    LEFT_MARGIN_PT,
+    LINE_HEIGHT_PT,
+    PAGE_HEIGHT_PT,
+    PAGE_WIDTH_PT,
     TITLE_FONT_SIZE,
+    TOP_Y_PT,
 };
 use crate::pdf::writer::{ ensure_parent_dir_exists, file_size };
 
 pub fn generate_simple_pdf(request: &CreatePdfRequest) -> Result<CreatePdfResponse, PdfForgeError> {
     validate_request(request)?;
-
     ensure_parent_dir_exists(&request.output_path)?;
 
     let title = request.title.trim();
     let body = request.body.trim();
     let author = request.author.as_deref().unwrap_or("Unknown").trim();
 
-    let mut doc = PdfDocument::new(title);
-    let mut ops: Vec<Op> = Vec::new();
+    let mut doc = Document::with_version("1.5");
 
-    ops.push(Op::StartTextSection);
+    let pages_id = doc.new_object_id();
 
-    // Title
-    ops.push(Op::SetFont {
-        font: PdfFontHandle::Builtin(BuiltinFont::HelveticaBold),
-        size: Pt(TITLE_FONT_SIZE as f32),
-    });
-    ops.push(Op::SetTextCursor {
-        pos: Point {
-            x: Mm(MARGIN_LEFT_MM as f32).into(),
-            y: Mm(MARGIN_TOP_MM as f32).into(),
-        },
-    });
-    ops.push(Op::ShowText {
-        items: vec![TextItem::Text(title.to_string())],
-    });
-
-    // Author
-    ops.push(Op::SetFont {
-        font: PdfFontHandle::Builtin(BuiltinFont::Helvetica),
-        size: Pt(BODY_FONT_SIZE as f32),
-    });
-    ops.push(Op::SetTextCursor {
-        pos: Point {
-            x: Mm(MARGIN_LEFT_MM as f32).into(),
-            y: Mm((BODY_START_Y_MM + 12.0) as f32).into(),
-        },
-    });
-    ops.push(Op::ShowText {
-        items: vec![TextItem::Text(format!("Author: {author}"))],
-    });
-
-    // Body
-    ops.push(Op::SetLineHeight {
-        lh: Pt(mm_to_pt(LINE_HEIGHT_MM)),
-    });
-
-    let mut current_y_mm = BODY_START_Y_MM;
-
-    for line in split_text_into_lines(body) {
-        if current_y_mm <= 20.0 {
-            break;
-        }
-
-        ops.push(Op::SetTextCursor {
-            pos: Point {
-                x: Mm(MARGIN_LEFT_MM as f32).into(),
-                y: Mm(current_y_mm as f32).into(),
-            },
-        });
-
-        ops.push(Op::ShowText {
-            items: vec![TextItem::Text(line)],
-        });
-
-        current_y_mm -= LINE_HEIGHT_MM;
+    let font_id = doc.add_object(
+        dictionary! {
+        "Type" => "Font",
+        "Subtype" => "Type1",
+        "BaseFont" => "Helvetica",
     }
+    );
 
-    ops.push(Op::EndTextSection);
+    let font_bold_id = doc.add_object(
+        dictionary! {
+        "Type" => "Font",
+        "Subtype" => "Type1",
+        "BaseFont" => "Helvetica-Bold",
+    }
+    );
 
-    let page = PdfPage::new(Mm(PAGE_WIDTH_MM as f32), Mm(PAGE_HEIGHT_MM as f32), ops);
+    let resources_id = doc.add_object(
+        dictionary! {
+        "Font" => dictionary! {
+            "F1" => font_id,
+            "F2" => font_bold_id,
+        }
+    }
+    );
 
-    doc.with_pages(vec![page]);
+    let content = build_page_content(title, body, author)?;
+    let content_id = doc.add_object(
+        Stream::new(
+            dictionary! {},
+            content
+                .encode()
+                .map_err(|e| {
+                    PdfForgeError::GeneratePdf(format!("Failed to encode content stream: {e}"))
+                })?
+        )
+    );
 
-    let mut warnings = Vec::new();
-    let pdf_bytes = doc.save(&PdfSaveOptions::default(), &mut warnings);
+    let page_id = doc.add_object(
+        dictionary! {
+        "Type" => "Page",
+        "Parent" => pages_id,
+        "MediaBox" => vec![
+            Object::Integer(0),
+            Object::Integer(0),
+            Object::Real(PAGE_WIDTH_PT as f32),
+            Object::Real(PAGE_HEIGHT_PT as f32),
+        ],
+        "Contents" => content_id,
+        "Resources" => resources_id,
+    }
+    );
 
-    std::fs
-        ::write(&request.output_path, pdf_bytes)
-        .map_err(|e| PdfForgeError::WriteFile(format!("Failed to write PDF file: {e}")))?;
+    let pages =
+        dictionary! {
+        "Type" => "Pages",
+        "Kids" => vec![Object::Reference(page_id)],
+        "Count" => 1,
+        "MediaBox" => vec![
+            Object::Integer(0),
+            Object::Integer(0),
+            Object::Real(PAGE_WIDTH_PT as f32),
+            Object::Real(PAGE_HEIGHT_PT as f32),
+        ],
+    };
+    doc.objects.insert(pages_id, Object::Dictionary(pages));
+
+    let catalog_id = doc.add_object(
+        dictionary! {
+        "Type" => "Catalog",
+        "Pages" => pages_id,
+    }
+    );
+
+    doc.trailer.set("Root", catalog_id);
+    doc.compress();
+    doc
+        .save(&request.output_path)
+        .map_err(|e| PdfForgeError::WriteFile(format!("Failed to save PDF: {e}")))?;
 
     let size = file_size(&request.output_path)?;
 
@@ -124,6 +124,79 @@ pub fn generate_simple_pdf(request: &CreatePdfRequest) -> Result<CreatePdfRespon
         file_size_bytes: size,
         page_count: 1,
     })
+}
+
+fn build_page_content(title: &str, body: &str, author: &str) -> Result<Content, PdfForgeError> {
+    let mut operations = Vec::<Operation>::new();
+
+    // Title
+    operations.push(Operation::new("BT", vec![]));
+    operations.push(
+        Operation::new(
+            "Tf",
+            vec![Object::Name(b"F2".to_vec()), Object::Real(TITLE_FONT_SIZE as f32)]
+        )
+    );
+    operations.push(
+        Operation::new(
+            "Td",
+            vec![Object::Real(LEFT_MARGIN_PT as f32), Object::Real(TOP_Y_PT as f32)]
+        )
+    );
+    operations.push(Operation::new("Tj", vec![Object::string_literal(escape_pdf_text(title))]));
+    operations.push(Operation::new("ET", vec![]));
+
+    // Author
+    operations.push(Operation::new("BT", vec![]));
+    operations.push(
+        Operation::new(
+            "Tf",
+            vec![Object::Name(b"F1".to_vec()), Object::Real(BODY_FONT_SIZE as f32)]
+        )
+    );
+    operations.push(
+        Operation::new(
+            "Td",
+            vec![Object::Real(LEFT_MARGIN_PT as f32), Object::Real(AUTHOR_Y_PT as f32)]
+        )
+    );
+    operations.push(
+        Operation::new(
+            "Tj",
+            vec![Object::string_literal(escape_pdf_text(&format!("Author: {author}")))]
+        )
+    );
+    operations.push(Operation::new("ET", vec![]));
+
+    // Body lines
+    let lines = split_text_into_lines(body, 80);
+    let mut current_y = BODY_START_Y_PT;
+
+    for line in lines {
+        if current_y < BOTTOM_MARGIN_PT {
+            break;
+        }
+
+        operations.push(Operation::new("BT", vec![]));
+        operations.push(
+            Operation::new(
+                "Tf",
+                vec![Object::Name(b"F1".to_vec()), Object::Real(BODY_FONT_SIZE as f32)]
+            )
+        );
+        operations.push(
+            Operation::new(
+                "Td",
+                vec![Object::Real(LEFT_MARGIN_PT as f32), Object::Real(current_y as f32)]
+            )
+        );
+        operations.push(Operation::new("Tj", vec![Object::string_literal(escape_pdf_text(&line))]));
+        operations.push(Operation::new("ET", vec![]));
+
+        current_y -= LINE_HEIGHT_PT;
+    }
+
+    Ok(Content { operations })
 }
 
 fn validate_request(request: &CreatePdfRequest) -> Result<(), PdfForgeError> {
@@ -142,9 +215,7 @@ fn validate_request(request: &CreatePdfRequest) -> Result<(), PdfForgeError> {
     Ok(())
 }
 
-fn split_text_into_lines(text: &str) -> Vec<String> {
-    const MAX_CHARS_PER_LINE: usize = 80;
-
+fn split_text_into_lines(text: &str, max_chars_per_line: usize) -> Vec<String> {
     let mut lines = Vec::new();
 
     for paragraph in text.lines() {
@@ -164,7 +235,7 @@ fn split_text_into_lines(text: &str) -> Vec<String> {
                 format!("{current_line} {word}")
             };
 
-            if candidate.chars().count() <= MAX_CHARS_PER_LINE {
+            if candidate.chars().count() <= max_chars_per_line {
                 current_line = candidate;
             } else {
                 if !current_line.is_empty() {
@@ -182,6 +253,6 @@ fn split_text_into_lines(text: &str) -> Vec<String> {
     lines
 }
 
-fn mm_to_pt(mm: f64) -> f32 {
-    ((mm * 72.0) / 25.4) as f32
+fn escape_pdf_text(input: &str) -> String {
+    input.replace('\\', "\\\\").replace('(', "\\(").replace(')', "\\)")
 }
