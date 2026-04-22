@@ -53,38 +53,40 @@ class _PdfHomePageState extends State<PdfHomePage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Flutter + Rust PDF')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(labelText: 'PDF title', border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _authorController,
-              decoration: const InputDecoration(labelText: 'Author', border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _bodyController,
-              maxLines: 6,
-              decoration: const InputDecoration(labelText: 'PDF body', border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: state.isLoading ? null : _onGeneratePressed,
-                child: state.isLoading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Generate PDF'),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              TextField(
+                controller: _titleController,
+                decoration: const InputDecoration(labelText: 'PDF title', border: OutlineInputBorder()),
               ),
-            ),
-            const SizedBox(height: 16),
-            if (state.message != null) Text(state.message!, style: const TextStyle(color: Colors.green)),
-            if (state.generatedPath != null) ...[const SizedBox(height: 8), SelectableText('Saved: ${state.generatedPath}')],
-            if (state.error != null) ...[const SizedBox(height: 8), Text(state.error!, style: const TextStyle(color: Colors.red))],
-          ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: _authorController,
+                decoration: const InputDecoration(labelText: 'Author', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _bodyController,
+                maxLines: 6,
+                decoration: const InputDecoration(labelText: 'PDF body', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: state.isLoading ? null : _onGeneratePressed,
+                  child: state.isLoading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Generate PDF'),
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (state.message != null) Text(state.message!, style: const TextStyle(color: Colors.green)),
+              if (state.generatedPath != null) ...[const SizedBox(height: 8), SelectableText('Saved: ${state.generatedPath}')],
+              if (state.error != null) ...[const SizedBox(height: 8), Text(state.error!, style: const TextStyle(color: Colors.red))],
+            ],
+          ),
         ),
       ),
     );
