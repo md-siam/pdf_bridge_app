@@ -1,6 +1,6 @@
 rust_root: rust/
 rust_input: crate::api
-dart_output: lib/src/rust/
+dart_output: lib/src/rust
 c_output: rust/bridge_generated.h
 dart_format_line_length: 100
 

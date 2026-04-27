@@ -1,4 +1,4 @@
-import 'package:pdf_bridge_app/src/rust/frb_generated.dart';
+import 'rust/frb_generated.dart';
 
 class RustInit {
   static Future<void> init() async {
