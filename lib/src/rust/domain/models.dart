@@ -11,16 +11,19 @@ class CreatePdfRequest {
   final String title;
   final String body;
   final String? author;
+  final Uint8List? imageBytes;
 
   const CreatePdfRequest({
     required this.outputPath,
     required this.title,
     required this.body,
     this.author,
+    this.imageBytes,
   });
 
   @override
-  int get hashCode => outputPath.hashCode ^ title.hashCode ^ body.hashCode ^ author.hashCode;
+  int get hashCode =>
+      outputPath.hashCode ^ title.hashCode ^ body.hashCode ^ author.hashCode ^ imageBytes.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -30,7 +33,8 @@ class CreatePdfRequest {
           outputPath == other.outputPath &&
           title == other.title &&
           body == other.body &&
-          author == other.author;
+          author == other.author &&
+          imageBytes == other.imageBytes;
 }
 
 class CreatePdfResponse {

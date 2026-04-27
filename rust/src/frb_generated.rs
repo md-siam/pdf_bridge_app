@@ -106,11 +106,13 @@ impl SseDecode for crate::domain::models::CreatePdfRequest {
         let mut var_title = <String>::sse_decode(deserializer);
         let mut var_body = <String>::sse_decode(deserializer);
         let mut var_author = <Option<String>>::sse_decode(deserializer);
+        let mut var_imageBytes = <Option<Vec<u8>>>::sse_decode(deserializer);
         return crate::domain::models::CreatePdfRequest {
             output_path: var_outputPath,
             title: var_title,
             body: var_body,
             author: var_author,
+            image_bytes: var_imageBytes,
         };
     }
 }
@@ -148,6 +150,17 @@ impl SseDecode for Option<String> {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
             return Some(<String>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<Vec<u8>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<Vec<u8>>::sse_decode(deserializer));
         } else {
             return None;
         }
@@ -224,6 +237,7 @@ impl flutter_rust_bridge::IntoDart for crate::domain::models::CreatePdfRequest {
             self.title.into_into_dart().into_dart(),
             self.body.into_into_dart().into_dart(),
             self.author.into_into_dart().into_dart(),
+            self.image_bytes.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -277,6 +291,7 @@ impl SseEncode for crate::domain::models::CreatePdfRequest {
         <String>::sse_encode(self.title, serializer);
         <String>::sse_encode(self.body, serializer);
         <Option<String>>::sse_encode(self.author, serializer);
+        <Option<Vec<u8>>>::sse_encode(self.image_bytes, serializer);
     }
 }
 
@@ -306,6 +321,16 @@ impl SseEncode for Option<String> {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <String>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<Vec<u8>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <Vec<u8>>::sse_encode(value, serializer);
         }
     }
 }
@@ -387,6 +412,7 @@ mod io {
                 title: self.title.cst_decode(),
                 body: self.body.cst_decode(),
                 author: self.author.cst_decode(),
+                image_bytes: self.image_bytes.cst_decode(),
             }
         }
     }
@@ -417,6 +443,7 @@ mod io {
                 title: core::ptr::null_mut(),
                 body: core::ptr::null_mut(),
                 author: core::ptr::null_mut(),
+                image_bytes: core::ptr::null_mut(),
             }
         }
     }
@@ -475,6 +502,7 @@ mod io {
         title: *mut wire_cst_list_prim_u_8_strict,
         body: *mut wire_cst_list_prim_u_8_strict,
         author: *mut wire_cst_list_prim_u_8_strict,
+        image_bytes: *mut wire_cst_list_prim_u_8_strict,
     }
     #[repr(C)]
     #[derive(Clone, Copy)]

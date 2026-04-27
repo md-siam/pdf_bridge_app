@@ -1,21 +1,18 @@
 use std::path::Path;
 
+use image::ImageReader;
 use lopdf::content::{ Content, Operation };
 use lopdf::{ dictionary, Document, Object, Stream };
 
 use crate::domain::models::{ CreatePdfRequest, CreatePdfResponse };
 use crate::error::PdfForgeError;
 use crate::pdf::layout::{
-    AUTHOR_Y_PT,
     BODY_FONT_SIZE,
-    BODY_START_Y_PT,
     BOTTOM_MARGIN_PT,
-    LEFT_MARGIN_PT,
     LINE_HEIGHT_PT,
     PAGE_HEIGHT_PT,
     PAGE_WIDTH_PT,
     TITLE_FONT_SIZE,
-    TOP_Y_PT,
 };
 use crate::pdf::writer::{ ensure_parent_dir_exists, file_size };
 
@@ -47,16 +44,36 @@ pub fn generate_simple_pdf(request: &CreatePdfRequest) -> Result<CreatePdfRespon
     }
     );
 
-    let resources_id = doc.add_object(
-        dictionary! {
-        "Font" => dictionary! {
-            "F1" => font_id,
-            "F2" => font_bold_id,
-        }
-    }
-    );
+    let image_info = if let Some(bytes) = &request.image_bytes {
+        Some(add_image_xobject(&mut doc, bytes)?)
+    } else {
+        None
+    };
 
-    let content = build_page_content(title, body, author)?;
+    let resources_id = if let Some((image_id, _, _)) = image_info {
+        doc.add_object(
+            dictionary! {
+            "Font" => dictionary! {
+                "F1" => font_id,
+                "F2" => font_bold_id,
+            },
+            "XObject" => dictionary! {
+                "Im1" => image_id,
+            }
+        }
+        )
+    } else {
+        doc.add_object(
+            dictionary! {
+            "Font" => dictionary! {
+                "F1" => font_id,
+                "F2" => font_bold_id,
+            }
+        }
+        )
+    };
+
+    let content = build_page_content(title, body, author, image_info)?;
     let content_id = doc.add_object(
         Stream::new(
             dictionary! {},
@@ -95,6 +112,7 @@ pub fn generate_simple_pdf(request: &CreatePdfRequest) -> Result<CreatePdfRespon
             Object::Real(PAGE_HEIGHT_PT as f32),
         ],
     };
+
     doc.objects.insert(pages_id, Object::Dictionary(pages));
 
     let catalog_id = doc.add_object(
@@ -106,6 +124,7 @@ pub fn generate_simple_pdf(request: &CreatePdfRequest) -> Result<CreatePdfRespon
 
     doc.trailer.set("Root", catalog_id);
     doc.compress();
+
     doc
         .save(&request.output_path)
         .map_err(|e| PdfForgeError::WriteFile(format!("Failed to save PDF: {e}")))?;
@@ -126,8 +145,102 @@ pub fn generate_simple_pdf(request: &CreatePdfRequest) -> Result<CreatePdfRespon
     })
 }
 
-fn build_page_content(title: &str, body: &str, author: &str) -> Result<Content, PdfForgeError> {
+fn add_image_xobject(
+    doc: &mut Document,
+    image_bytes: &[u8]
+) -> Result<(lopdf::ObjectId, u32, u32), PdfForgeError> {
+    let image = ImageReader::new(std::io::Cursor::new(image_bytes))
+        .with_guessed_format()
+        .map_err(|e| PdfForgeError::GeneratePdf(format!("Failed to read image format: {e}")))?
+        .decode()
+        .map_err(|e| PdfForgeError::GeneratePdf(format!("Failed to decode image: {e}")))?;
+
+    let rgb_image = image.to_rgb8();
+    let width = rgb_image.width();
+    let height = rgb_image.height();
+    let raw_rgb = rgb_image.into_raw();
+
+    let image_stream = Stream::new(
+        dictionary! {
+            "Type" => "XObject",
+            "Subtype" => "Image",
+            "Width" => width as i64,
+            "Height" => height as i64,
+            "ColorSpace" => "DeviceRGB",
+            "BitsPerComponent" => 8,
+        },
+        raw_rgb
+    );
+
+    let image_id = doc.add_object(image_stream);
+
+    Ok((image_id, width, height))
+}
+
+fn build_page_content(
+    title: &str,
+    body: &str,
+    author: &str,
+    image_info: Option<(lopdf::ObjectId, u32, u32)>
+) -> Result<Content, PdfForgeError> {
     let mut operations = Vec::<Operation>::new();
+
+    // Layout constants
+    const LEFT_MARGIN_PT: f64 = 50.0;
+    const TOP_MARGIN_PT: f64 = 60.0;
+    const IMAGE_TEXT_GAP_PT: f64 = 25.0;
+
+    const MAX_IMAGE_WIDTH_PT: f64 = 130.0;
+    const MAX_IMAGE_HEIGHT_PT: f64 = 170.0;
+
+    // Approximate visible top of Helvetica-Bold text above baseline.
+    // You can tweak 0.72 slightly (0.70 - 0.75) if needed.
+    const TITLE_ASCENDER_RATIO: f64 = 0.72;
+
+    const AUTHOR_OFFSET_PT: f64 = 45.0;
+    const BODY_OFFSET_PT: f64 = 34.0;
+
+    let title_baseline_y = PAGE_HEIGHT_PT - TOP_MARGIN_PT;
+    let title_visual_top_y = title_baseline_y + TITLE_FONT_SIZE * TITLE_ASCENDER_RATIO;
+
+    let author_baseline_y = title_baseline_y - AUTHOR_OFFSET_PT;
+    let body_start_y = author_baseline_y - BODY_OFFSET_PT;
+
+    let image_x = LEFT_MARGIN_PT;
+    let mut text_x = LEFT_MARGIN_PT;
+
+    let has_image = image_info.is_some();
+
+    if let Some((_image_id, image_width, image_height)) = image_info {
+        let width_ratio = MAX_IMAGE_WIDTH_PT / (image_width as f64);
+        let height_ratio = MAX_IMAGE_HEIGHT_PT / (image_height as f64);
+        let scale = width_ratio.min(height_ratio);
+
+        let display_width = (image_width as f64) * scale;
+        let display_height = (image_height as f64) * scale;
+
+        // Align image top with the visible top of the title
+        let image_y = title_visual_top_y - display_height;
+
+        operations.push(Operation::new("q", vec![]));
+        operations.push(
+            Operation::new(
+                "cm",
+                vec![
+                    Object::Real(display_width as f32),
+                    Object::Real(0.0),
+                    Object::Real(0.0),
+                    Object::Real(display_height as f32),
+                    Object::Real(image_x as f32),
+                    Object::Real(image_y as f32)
+                ]
+            )
+        );
+        operations.push(Operation::new("Do", vec![Object::Name(b"Im1".to_vec())]));
+        operations.push(Operation::new("Q", vec![]));
+
+        text_x = image_x + display_width + IMAGE_TEXT_GAP_PT;
+    }
 
     // Title
     operations.push(Operation::new("BT", vec![]));
@@ -140,10 +253,10 @@ fn build_page_content(title: &str, body: &str, author: &str) -> Result<Content, 
     operations.push(
         Operation::new(
             "Td",
-            vec![Object::Real(LEFT_MARGIN_PT as f32), Object::Real(TOP_Y_PT as f32)]
+            vec![Object::Real(text_x as f32), Object::Real(title_baseline_y as f32)]
         )
     );
-    operations.push(Operation::new("Tj", vec![Object::string_literal(escape_pdf_text(title))]));
+    operations.push(Operation::new("Tj", vec![Object::string_literal(title)]));
     operations.push(Operation::new("ET", vec![]));
 
     // Author
@@ -157,20 +270,18 @@ fn build_page_content(title: &str, body: &str, author: &str) -> Result<Content, 
     operations.push(
         Operation::new(
             "Td",
-            vec![Object::Real(LEFT_MARGIN_PT as f32), Object::Real(AUTHOR_Y_PT as f32)]
+            vec![Object::Real(text_x as f32), Object::Real(author_baseline_y as f32)]
         )
     );
     operations.push(
-        Operation::new(
-            "Tj",
-            vec![Object::string_literal(escape_pdf_text(&format!("Author: {author}")))]
-        )
+        Operation::new("Tj", vec![Object::string_literal(format!("Author: {author}"))])
     );
     operations.push(Operation::new("ET", vec![]));
 
-    // Body lines
-    let lines = split_text_into_lines(body, 80);
-    let mut current_y = BODY_START_Y_PT;
+    // Body
+    let available_chars = if has_image { 55 } else { 80 };
+    let lines = split_text_into_lines(body, available_chars);
+    let mut current_y = body_start_y;
 
     for line in lines {
         if current_y < BOTTOM_MARGIN_PT {
@@ -185,12 +296,9 @@ fn build_page_content(title: &str, body: &str, author: &str) -> Result<Content, 
             )
         );
         operations.push(
-            Operation::new(
-                "Td",
-                vec![Object::Real(LEFT_MARGIN_PT as f32), Object::Real(current_y as f32)]
-            )
+            Operation::new("Td", vec![Object::Real(text_x as f32), Object::Real(current_y as f32)])
         );
-        operations.push(Operation::new("Tj", vec![Object::string_literal(escape_pdf_text(&line))]));
+        operations.push(Operation::new("Tj", vec![Object::string_literal(line)]));
         operations.push(Operation::new("ET", vec![]));
 
         current_y -= LINE_HEIGHT_PT;
@@ -251,8 +359,4 @@ fn split_text_into_lines(text: &str, max_chars_per_line: usize) -> Vec<String> {
     }
 
     lines
-}
-
-fn escape_pdf_text(input: &str) -> String {
-    input.replace('\\', "\\\\").replace('(', "\\(").replace(')', "\\)")
 }

@@ -6,6 +6,7 @@ pub struct CreatePdfRequest {
     pub title: String,
     pub body: String,
     pub author: Option<String>,
+    pub image_bytes: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
