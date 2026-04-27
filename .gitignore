@@ -45,6 +45,7 @@ app.*.map.json
 /android/app/release
 
 # Flutter Rust Bridge generated files
+.metadata
 /rust/target
 rust/src/frb_generated.rs
 lib/src/rust
@@ -52,3 +53,4 @@ lib/src/rust
 /linux/runner/lib
 /linux/runner/rust_static
 /rust/bridge_generated.h
+/rust/rust.xcodeproj
