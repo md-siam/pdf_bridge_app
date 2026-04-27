@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../controller/pdf_controller.dart';
 import '../models/pdf_form_data.dart';
@@ -15,6 +18,9 @@ class PdfHomePage extends StatefulWidget {
 
 class _PdfHomePageState extends State<PdfHomePage> {
   late final PdfController _controller;
+  Uint8List? _selectedImageBytes;
+  String? _selectedImageName;
+  final ImagePicker _imagePicker = ImagePicker();
   final _titleController = TextEditingController(text: 'Hello from Rust');
   final _bodyController = TextEditingController(text: 'This PDF was generated in Rust and opened from Flutter.');
   final _authorController = TextEditingController(text: 'Md. Siam');
@@ -32,6 +38,25 @@ class _PdfHomePageState extends State<PdfHomePage> {
         });
   }
 
+  Future<void> _pickImage() async {
+    final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery, imageQuality: 90);
+
+    if (image == null) return;
+
+    final bytes = await image.readAsBytes();
+
+    setState(() {
+      _selectedImageBytes = bytes;
+      _selectedImageName = image.name;
+    });
+  }
+
+  Future<void> _onGeneratePressed() async {
+    final formData = PdfFormData(title: _titleController.text.trim(), body: _bodyController.text.trim(), author: _authorController.text.trim().isEmpty ? null : _authorController.text.trim(), imageBytes: _selectedImageBytes);
+
+    await _controller.generateAndOpenPdf(formData);
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -39,12 +64,6 @@ class _PdfHomePageState extends State<PdfHomePage> {
     _bodyController.dispose();
     _authorController.dispose();
     super.dispose();
-  }
-
-  Future<void> _onGeneratePressed() async {
-    final formData = PdfFormData(title: _titleController.text.trim(), body: _bodyController.text.trim(), author: _authorController.text.trim().isEmpty ? null : _authorController.text.trim());
-
-    await _controller.generateAndOpenPdf(formData);
   }
 
   @override
@@ -73,6 +92,20 @@ class _PdfHomePageState extends State<PdfHomePage> {
                 maxLines: 6,
                 decoration: const InputDecoration(labelText: 'PDF body', border: OutlineInputBorder()),
               ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(onPressed: state.isLoading ? null : _pickImage, icon: const Icon(Icons.image), label: const Text('Choose Picture')),
+              ),
+              if (_selectedImageBytes != null) ...[
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.memory(_selectedImageBytes!, height: 160, fit: BoxFit.cover),
+                ),
+                const SizedBox(height: 8),
+                Text(_selectedImageName ?? 'Image selected', style: Theme.of(context).textTheme.bodySmall),
+              ],
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,

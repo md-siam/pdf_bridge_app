@@ -38,6 +38,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? dco_decode_opt_String(dynamic raw);
 
   @protected
+  Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw);
+
+  @protected
   int dco_decode_u_32(dynamic raw);
 
   @protected
@@ -63,6 +66,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_32(SseDeserializer deserializer);
@@ -110,6 +116,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   }
 
   @protected
+  ffi.Pointer<wire_cst_list_prim_u_8_strict> cst_encode_opt_list_prim_u_8_strict(Uint8List? raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw == null ? ffi.nullptr : cst_encode_list_prim_u_8_strict(raw);
+  }
+
+  @protected
   int cst_encode_u_64(BigInt raw) {
     // Codec=Cst (C-struct based), see doc to use other codecs
     return raw.toSigned(64).toInt();
@@ -132,6 +144,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     wireObj.title = cst_encode_String(apiObj.title);
     wireObj.body = cst_encode_String(apiObj.body);
     wireObj.author = cst_encode_opt_String(apiObj.author);
+    wireObj.image_bytes = cst_encode_opt_list_prim_u_8_strict(apiObj.imageBytes);
   }
 
   @protected
@@ -168,6 +181,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_list_prim_u_8_strict(Uint8List? self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_32(int self, SseSerializer serializer);
@@ -290,6 +306,8 @@ final class wire_cst_create_pdf_request extends ffi.Struct {
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> body;
 
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> author;
+
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> image_bytes;
 }
 
 final class wire_cst_create_pdf_response extends ffi.Struct {

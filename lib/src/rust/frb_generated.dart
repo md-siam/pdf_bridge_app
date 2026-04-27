@@ -122,12 +122,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   CreatePdfRequest dco_decode_create_pdf_request(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4) throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 5) throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
     return CreatePdfRequest(
       outputPath: dco_decode_String(arr[0]),
       title: dco_decode_String(arr[1]),
       body: dco_decode_String(arr[2]),
       author: dco_decode_opt_String(arr[3]),
+      imageBytes: dco_decode_opt_list_prim_u_8_strict(arr[4]),
     );
   }
 
@@ -154,6 +155,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   String? dco_decode_opt_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_String(raw);
+  }
+
+  @protected
+  Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_list_prim_u_8_strict(raw);
   }
 
   @protected
@@ -194,11 +201,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_title = sse_decode_String(deserializer);
     var var_body = sse_decode_String(deserializer);
     var var_author = sse_decode_opt_String(deserializer);
+    var var_imageBytes = sse_decode_opt_list_prim_u_8_strict(deserializer);
     return CreatePdfRequest(
       outputPath: var_outputPath,
       title: var_title,
       body: var_body,
       author: var_author,
+      imageBytes: var_imageBytes,
     );
   }
 
@@ -230,6 +239,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
     if (sse_decode_bool(deserializer)) {
       return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_list_prim_u_8_strict(deserializer));
     } else {
       return null;
     }
@@ -296,6 +316,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.title, serializer);
     sse_encode_String(self.body, serializer);
     sse_encode_opt_String(self.author, serializer);
+    sse_encode_opt_list_prim_u_8_strict(self.imageBytes, serializer);
   }
 
   @protected
@@ -321,6 +342,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_String(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_list_prim_u_8_strict(Uint8List? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_list_prim_u_8_strict(self, serializer);
     }
   }
 
